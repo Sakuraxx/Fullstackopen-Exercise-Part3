@@ -61,6 +61,25 @@ app.get('/info', (request, response) => {
   response.send(text);
 });
 
+const generateId = () => {
+  let max = 1000;
+  let randomId = Math.round(Math.random() * max);
+  const ids = persons.map((p) => Number(p.id));
+  if (ids.includes(randomId)) {
+    randomId = Math.round(Math.random() * max);
+  }
+  return randomId;
+};
+
+app.use(express.json());
+
+app.post('/api/persons', (request, response) => {
+  const person = request.body;
+  person.id = generateId();
+  persons = persons.concat(person);
+  response.json(person);
+});
+
 const PORT = 3001;
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
