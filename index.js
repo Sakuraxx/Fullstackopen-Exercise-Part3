@@ -5,12 +5,28 @@ const morgan = require('morgan');
 
 const app = express();
 
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.use((req, res, next) => {
+  req.requestBody = req.body;
+  next();
+});
+
+morgan.token('body', (req) => {
+  return req.requestBody ? JSON.stringify(req.requestBody) : 'No body';
+});
+
 const accessLogStream = fs.createWriteStream(
   path.join(__dirname, 'access.log'),
   { flags: 'a' }
 );
 
-app.use(morgan('tiny', { stream: accessLogStream }));
+app.use(
+  morgan(':method :url :status :response-time ms :body', {
+    stream: accessLogStream,
+  })
+);
 
 let persons = [
   {
@@ -81,8 +97,6 @@ const generateId = () => {
   }
   return randomId;
 };
-
-app.use(express.json());
 
 app.post('/api/persons', (request, response) => {
   const person = request.body;
