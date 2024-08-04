@@ -75,6 +75,20 @@ app.use(express.json());
 
 app.post('/api/persons', (request, response) => {
   const person = request.body;
+
+  if (!person || !person.name || !person.number) {
+    return response.status(400).json({
+      error: 'The name or number is missing',
+    });
+  }
+
+  const names = persons.map((p) => p.name);
+  if (names.includes(person.name)) {
+    return response.status(400).json({
+      error: `The name ${person.name} already exists in the phonebook`,
+    });
+  }
+
   person.id = generateId();
   persons = persons.concat(person);
   response.json(person);
