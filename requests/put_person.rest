@@ -1,0 +1,16 @@
+PUT  http://localhost:3001/api/persons/66b8d183b10f290cbf4d448f
+Content-Type: application/json
+
+{
+    "name": "Modified name",
+    "number": "19-43-6423142"
+}
+
+###
+PUT  http://localhost:3001/api/persons/1
+Content-Type: application/json
+
+{
+    "name": "Modified name",
+    "number": "19-43-6423142"
+}

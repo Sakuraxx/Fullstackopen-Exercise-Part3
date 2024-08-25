@@ -35,13 +35,13 @@ app.use(
   })
 );
 
-app.get('/api/persons', (request, response) => {
+app.get('/api/persons', (request, response, next) => {
   Person.find({}).then((note) => {
     response.json(note);
   });
 });
 
-app.get('/api/persons/:id', (request, response) => {
+app.get('/api/persons/:id', (request, response, next) => {
   const id = request.params.id;
   Person.findById(id)
     .then((person) => {
@@ -51,15 +51,10 @@ app.get('/api/persons/:id', (request, response) => {
         response.status(404).end();
       }
     })
-    .catch((error) => {
-      console.error(error);
-      response
-        .status(500)
-        .send({ error: 'An error occurred while fetching person' });
-    });
+    .catch((error) => next(error));
 });
 
-app.delete('/api/persons/:id', (request, response) => {
+app.delete('/api/persons/:id', (request, response, next) => {
   const id = request.params.id;
   Person.findByIdAndDelete(id)
     .then((result) => {
@@ -69,12 +64,20 @@ app.delete('/api/persons/:id', (request, response) => {
         response.status(404).send({ error: 'Person not found' });
       }
     })
-    .catch((error) => {
-      console.error(error);
-      response
-        .status(500)
-        .send({ error: 'An error occurred while deleting person' });
-    });
+    .catch((error) => next(error));
+});
+
+app.put('/api/persons/:id', (request, response, next) => {
+  const updatePerson = { ...request.body };
+  delete updatePerson._id;
+
+  Person.findByIdAndUpdate({ _id: request.params.id }, updatePerson, {
+    new: true,
+  })
+    .then((updatedPerson) => {
+      response.json(updatedPerson);
+    })
+    .catch((error) => next(error));
 });
 
 app.use((req, res, next) => {
@@ -82,7 +85,7 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/info', (request, response) => {
+app.get('/info', (request, response, next) => {
   response.set('Content-Type', 'text/html');
 
   Person.find({})
@@ -93,15 +96,10 @@ app.get('/info', (request, response) => {
       `;
       response.send(text);
     })
-    .catch((error) => {
-      console.error(error);
-      response
-        .status(500)
-        .send({ error: 'An error occurred while fetching person info' });
-    });
+    .catch((error) => next(error));
 });
 
-app.post('/api/persons', (request, response) => {
+app.post('/api/persons', (request, response, next) => {
   const personNeedtoBeSaved = request.body;
 
   if (
@@ -124,13 +122,28 @@ app.post('/api/persons', (request, response) => {
     .then((savedPerson) => {
       response.status(201).json(savedPerson);
     })
-    .catch((error) => {
-      console.error(error);
-      response
-        .status(500)
-        .json({ error: 'An error occurred while saving person' });
-    });
+    .catch((error) => next(error));
 });
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' });
+};
+
+// handler of requests with unknown endpoint
+app.use(unknownEndpoint);
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message);
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' });
+  }
+
+  next(error);
+};
+
+// this has to be the last loaded middleware, also all the routes should be registered before this!
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
