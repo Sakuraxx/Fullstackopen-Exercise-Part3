@@ -1,8 +1,10 @@
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const morgan = require('morgan');
 const cors = require('cors');
+const Person = require('./models/person');
 
 const app = express();
 
@@ -33,52 +35,46 @@ app.use(
   })
 );
 
-let persons = [
-  {
-    id: '1',
-    name: 'Arto Hellas',
-    number: '040-123456',
-  },
-  {
-    id: '2',
-    name: 'Ada Lovelace',
-    number: '39-44-5323523',
-  },
-  {
-    id: '3',
-    name: 'Dan Abramov',
-    number: '12-43-234345',
-  },
-  {
-    id: '4',
-    name: 'Mary Poppendieck',
-    number: '39-23-6423122',
-  },
-];
-
 app.get('/api/persons', (request, response) => {
-  response.json(persons);
+  Person.find({}).then((note) => {
+    response.json(note);
+  });
 });
 
 app.get('/api/persons/:id', (request, response) => {
   const id = request.params.id;
-  const person = persons.find((person) => person.id === id);
-  if (person) {
-    response.json(person);
-  } else {
-    response.status(404).end();
-  }
+  Person.findById(id)
+    .then((person) => {
+      if (person) {
+        response.json(person);
+      } else {
+        response.status(404).end();
+      }
+    })
+    .catch((error) => {
+      console.error(error);
+      response
+        .status(500)
+        .send({ error: 'An error occurred while fetching person' });
+    });
 });
 
 app.delete('/api/persons/:id', (request, response) => {
   const id = request.params.id;
-  const person = persons.find((person) => person.id === id);
-  if (person) {
-    persons = persons.filter((person) => person.id !== id);
-    response.status(204).end();
-  } else {
-    response.status(404).end();
-  }
+  Person.findByIdAndDelete(id)
+    .then((result) => {
+      if (result) {
+        response.status(204).end(); // Successfully deleted, no content
+      } else {
+        response.status(404).send({ error: 'Person not found' });
+      }
+    })
+    .catch((error) => {
+      console.error(error);
+      response
+        .status(500)
+        .send({ error: 'An error occurred while deleting person' });
+    });
 });
 
 app.use((req, res, next) => {
@@ -88,40 +84,52 @@ app.use((req, res, next) => {
 
 app.get('/info', (request, response) => {
   response.set('Content-Type', 'text/html');
-  const cnt = persons.length;
-  const text = `<p>Phonebook has info for ${cnt} people</p><p>Request received at: ${request.requestTime}</p>`;
-  response.send(text);
+
+  Person.find({})
+    .then((persons) => {
+      const text = `
+        <p>Phonebook has info for ${persons.length} people</p>
+        <p>Request received at: ${request.requestTime}</p>
+      `;
+      response.send(text);
+    })
+    .catch((error) => {
+      console.error(error);
+      response
+        .status(500)
+        .send({ error: 'An error occurred while fetching person info' });
+    });
 });
 
-const generateId = () => {
-  let max = 1000;
-  let randomId = Math.round(Math.random() * max);
-  const ids = persons.map((p) => Number(p.id));
-  if (ids.includes(randomId)) {
-    randomId = Math.round(Math.random() * max);
-  }
-  return randomId;
-};
-
 app.post('/api/persons', (request, response) => {
-  const person = request.body;
+  const personNeedtoBeSaved = request.body;
 
-  if (!person || !person.name || !person.number) {
+  if (
+    !personNeedtoBeSaved ||
+    !personNeedtoBeSaved.name ||
+    !personNeedtoBeSaved.number
+  ) {
     return response.status(400).json({
       error: 'The name or number is missing',
     });
   }
 
-  const names = persons.map((p) => p.name);
-  if (names.includes(person.name)) {
-    return response.status(400).json({
-      error: `The name ${person.name} already exists in the phonebook`,
-    });
-  }
+  const person = new Person({
+    name: personNeedtoBeSaved.name,
+    number: personNeedtoBeSaved.number,
+  });
 
-  person.id = generateId();
-  persons = persons.concat(person);
-  response.json(person);
+  person
+    .save()
+    .then((savedPerson) => {
+      response.status(201).json(savedPerson);
+    })
+    .catch((error) => {
+      console.error(error);
+      response
+        .status(500)
+        .json({ error: 'An error occurred while saving person' });
+    });
 });
 
 const PORT = process.env.PORT || 3001;
