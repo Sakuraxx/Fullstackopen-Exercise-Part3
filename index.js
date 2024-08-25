@@ -35,7 +35,7 @@ app.use(
   })
 );
 
-app.get('/api/persons', (request, response, next) => {
+app.get('/api/persons', (request, response) => {
   Person.find({}).then((note) => {
     response.json(note);
   });
