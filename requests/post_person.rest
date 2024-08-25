@@ -6,6 +6,13 @@ Content-Type: application/json
     "number": "19-43-6423142"
 }
 
+###
+POST http://localhost:3001/api/persons
+Content-Type: application/json
 
+{
+    "name": "mm",
+    "number": "19-43-6423142"
+}
 
 
